@@ -4,7 +4,7 @@ const validator = require('validator');
 
 function generateToken(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '1h'
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d'  // Changed to 7 days
   });
 }
 
@@ -38,7 +38,8 @@ async function register(req, res, next) {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        fullName: user.name  // Add this for consistency
       },
       token
     });
@@ -64,7 +65,8 @@ async function login(req, res, next) {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        fullName: user.name  // Add this for consistency
       },
       token
     });
@@ -73,7 +75,35 @@ async function login(req, res, next) {
   }
 }
 
+// Add this new function
+async function getMe(req, res, next) {
+  try {
+    // User is already attached to req by the protect middleware
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        fullName: user.name,
+        bio: user.bio || '',
+        specialty: user.specialty || '',
+        experience: user.experience || 0,
+        location: user.location || '',
+        profilePicture: user.profilePicture || ''
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   register,
-  login
+  login,
+  getMe  // Export the new function
 };
