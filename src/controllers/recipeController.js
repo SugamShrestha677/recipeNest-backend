@@ -1,7 +1,7 @@
 const Recipe = require('../models/Recipe');
 const User = require('../models/User');
-const Comment = require('../models/Comment');
-const Notification = require('../models/Notification');
+const Comment = require('../models/comment');
+const Notification = require('../models/notification');
 
 async function createRecipe(req, res, next) {
   try {
