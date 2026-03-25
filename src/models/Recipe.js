@@ -12,7 +12,8 @@ const recipeSchema = new mongoose.Schema(
     description: {
       type: String,
       trim: true,
-      maxlength: 600
+      maxlength: 600,
+      default: ''
     },
     ingredients: {
       type: [String],
@@ -32,10 +33,52 @@ const recipeSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
+    // New fields for detailed recipe
+    image: {
+      type: String,
+      default: ''
+    },
+    prepTime: {
+      type: Number,
+      default: 30 // minutes
+    },
+    cookTime: {
+      type: Number,
+      default: 30 // minutes
+    },
+    servings: {
+      type: Number,
+      default: 4
+    },
+    difficulty: {
+      type: String,
+      enum: ['Easy', 'Medium', 'Hard'],
+      default: 'Medium'
+    },
+    cuisine: {
+      type: String,
+      default: ''
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true
+    },
+    likes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    saves: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    views: {
+      type: Number,
+      default: 0
+    },
+    published: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

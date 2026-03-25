@@ -27,6 +27,56 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Password is required'],
       minlength: 6,
       select: false
+    },
+
+    // New fields for chef profile
+    bio: {
+      type: String,
+      maxlength: 500,
+      default: ''
+    },
+    specialty: {
+      type: String,
+      default: ''
+    },
+    experience: {
+      type: Number,
+      min: 0,
+      max: 60,
+      default: 0
+    },
+    location: {
+      type: String,
+      default: ''
+    },
+    profilePicture: {
+      type: String,
+      default: ''
+    },
+    website: {
+      type: String,
+      default: ''
+    },
+    phone: {
+      type: String,
+      default: ''
+    },
+    // Stats
+    followers: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    following: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    totalLikes: {
+      type: Number,
+      default: 0
+    },
+    profileViews: {
+      type: Number,
+      default: 0
     }
   },
   { timestamps: true }
