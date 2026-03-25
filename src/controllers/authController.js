@@ -102,8 +102,48 @@ async function getMe(req, res, next) {
   }
 }
 
+async function updateProfile(req, res, next) {
+  try {
+    const { name, bio, specialty, experience, location, website, phone, profilePicture } = req.body;
+    
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (name) user.name = name;
+    if (bio !== undefined) user.bio = bio;
+    if (specialty !== undefined) user.specialty = specialty;
+    if (experience !== undefined) user.experience = experience;
+    if (location !== undefined) user.location = location;
+    if (website !== undefined) user.website = website;
+    if (phone !== undefined) user.phone = phone;
+    if (profilePicture !== undefined) user.profilePicture = profilePicture;
+    
+    await user.save();
+    
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        fullName: user.name,
+        bio: user.bio,
+        specialty: user.specialty,
+        experience: user.experience,
+        location: user.location,
+        profilePicture: user.profilePicture,
+        website: user.website,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports = {
   register,
   login,
-  getMe  // Export the new function
+  getMe,
+  updateProfile
 };
