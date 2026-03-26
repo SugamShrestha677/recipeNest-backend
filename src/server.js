@@ -17,8 +17,9 @@ const PORT = process.env.SERVER_PORT || 5000;
 
 app.use(helmet());
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
-express.json({ limit: '10mb' });
-express.urlencoded({ extended: true, limit: '10mb' });
+// IMPORTANT: Body parser middleware - MUST be added with app.use()
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(limiter);
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
