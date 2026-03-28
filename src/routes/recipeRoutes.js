@@ -8,7 +8,9 @@ const {
   likeRecipe,
   getMyRecipes,
   saveRecipe,
-  getSavedRecipes
+  getSavedRecipes,
+  searchRecipes,      
+  getTrendingRecipes  
 } = require('../controllers/recipeController');
 const authMiddleware = require('../middleware/auth');
 
@@ -16,6 +18,13 @@ const router = express.Router();
 
 // Public routes (no authentication required)
 router.get('/', getRecipes);
+
+// GET /api/recipes/search - Search recipes (must come before /:id)
+router.get('/search', searchRecipes);
+
+// GET /api/recipes/trending - Get trending recipes
+router.get('/trending', getTrendingRecipes);
+
 router.post('/:id/view', async (req, res, next) => {
   try {
     const Recipe = require('../models/Recipe');

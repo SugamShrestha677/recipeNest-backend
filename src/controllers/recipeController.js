@@ -380,6 +380,70 @@ async function getSavedRecipes(req, res, next) {
     next(error);
   }
 }
+
+// Search recipes (public)
+async function searchRecipes(req, res, next) {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 5), 50);
+    const query = req.query.q ? req.query.q.trim() : '';
+    
+    if (!query) {
+      return res.status(400).json({ message: 'Search query is required' });
+    }
+    
+    // Build search filter
+    const filter = {
+      published: true,
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+        { tags: { $regex: query, $options: 'i' } },
+        { cuisine: { $regex: query, $options: 'i' } }
+      ]
+    };
+    
+    const total = await Recipe.countDocuments(filter);
+    const recipes = await Recipe.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate('createdBy', 'name profilePicture')
+      .lean();
+    
+    res.json({
+      page,
+      limit,
+      total,
+      recipes,
+      query,
+      hasMore: page * limit < total
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Get trending recipes (most viewed/liked)
+async function getTrendingRecipes(req, res, next) {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 5), 20);
+    
+    const recipes = await Recipe.find({ published: true })
+      .sort({ views: -1, likes: -1 })
+      .limit(limit)
+      .populate('createdBy', 'name profilePicture')
+      .lean();
+    
+    res.json({
+      recipes,
+      total: recipes.length
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createRecipe,
   getRecipes,
@@ -390,5 +454,7 @@ module.exports = {
   addComment,
   getMyRecipes,
   saveRecipe,
-  getSavedRecipes
+  getSavedRecipes,
+  searchRecipes,
+  getTrendingRecipes
 };
