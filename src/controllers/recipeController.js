@@ -2,53 +2,106 @@ const Recipe = require('../models/Recipe');
 const User = require('../models/User');
 const Comment = require('../models/comment');
 const Notification = require('../models/notification');
+const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 async function createRecipe(req, res, next) {
   try {
-    const {
-      title,
-      description,
-      ingredients,
-      steps,
-      instructions,
-      tags,
-      image,
-      prepTime,
-      cookTime,
-      servings,
-      difficulty,
-      cuisine
-    } = req.body;
-
+    console.log('=== CREATE RECIPE DEBUG ===');
+    console.log('Request file:', req.file);
+    console.log('Request body:', req.body);
+    
+    // Get image path if file was uploaded
+    let imageUrl = '';
+    if (req.file) {
+      imageUrl = `/uploads/${req.file.filename}`;
+      console.log('Image saved at:', imageUrl);
+    }
+    
+    // Parse fields that come as JSON strings from FormData
+    let ingredientsArray = req.body.ingredients;
+    let stepsArray = req.body.steps || req.body.instructions;
+    let tagsArray = req.body.tags;
+    
+    // Parse JSON strings
+    try {
+      if (typeof ingredientsArray === 'string') {
+        ingredientsArray = JSON.parse(ingredientsArray);
+      }
+    } catch (e) {
+      if (typeof ingredientsArray === 'string') {
+        ingredientsArray = ingredientsArray.split(',').map(i => i.trim()).filter(Boolean);
+      }
+    }
+    
+    try {
+      if (typeof stepsArray === 'string') {
+        stepsArray = JSON.parse(stepsArray);
+      }
+    } catch (e) {
+      if (typeof stepsArray === 'string') {
+        stepsArray = stepsArray.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    
+    try {
+      if (typeof tagsArray === 'string') {
+        tagsArray = JSON.parse(tagsArray);
+      }
+    } catch (e) {
+      if (typeof tagsArray === 'string') {
+        tagsArray = tagsArray.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+    
+    // Ensure arrays exist
+    ingredientsArray = ingredientsArray || [];
+    stepsArray = stepsArray || [];
+    tagsArray = tagsArray || [];
+    
+    console.log('Parsed ingredients:', ingredientsArray);
+    console.log('Parsed steps:', stepsArray);
+    console.log('Parsed tags:', tagsArray);
+    
     // Validation
-    if (!title || title.length < 3) {
+    if (!req.body.title || req.body.title.length < 3) {
       return res.status(400).json({ message: 'Recipe title must be at least 3 characters' });
     }
-    if (!ingredients || ingredients.length === 0) {
+    if (ingredientsArray.length === 0) {
       return res.status(400).json({ message: 'Provide at least one ingredient' });
     }
-    if (!instructions || instructions.length === 0) {
-      return res.status(400).json({ message: 'Provide at least one instruction' });
+    if (stepsArray.length === 0) {
+      return res.status(400).json({ message: 'Provide at least one step/instruction' });
     }
-
+    
     const recipe = await Recipe.create({
-      title,
-      description: description || '',
-      ingredients,
-      steps: steps || [],
-      instructions,
-      tags: tags || [],
-      image: image || '',
-      prepTime: prepTime || 30,
-      cookTime: cookTime || 30,
-      servings: servings || 4,
-      difficulty: difficulty || 'Medium',
-      cuisine: cuisine || '',
+      title: req.body.title,
+      description: req.body.description || '',
+      ingredients: ingredientsArray,
+      steps: stepsArray,
+      instructions: stepsArray, // Also save as instructions for compatibility
+      tags: tagsArray,
+      image: imageUrl, // This is where the image URL should be saved!
+      prepTime: parseInt(req.body.prepTime) || 30,
+      cookTime: parseInt(req.body.cookTime) || 30,
+      servings: parseInt(req.body.servings) || 4,
+      difficulty: req.body.difficulty || 'Medium',
+      cuisine: req.body.cuisine || '',
       createdBy: req.user.id
     });
-
+    
+    console.log('Recipe created successfully with image:', recipe.image);
+    console.log('========================');
+    
     res.status(201).json(recipe);
   } catch (error) {
+    console.error('Create recipe error:', error);
     next(error);
   }
 }
@@ -138,9 +191,62 @@ async function getRecipeById(req, res, next) {
 
 async function updateRecipe(req, res, next) {
   try {
+    console.log('=== UPDATE RECIPE DEBUG ===');
+    console.log('Recipe ID:', req.params.id);
+    console.log('Request file:', req.file);
+    console.log('Request body:', req.body);
+    
+    const updateData = { ...req.body };
+    
+    // If new image uploaded, add it to update data
+    if (req.file) {
+      updateData.image = `/uploads/${req.file.filename}`;
+      console.log('New image uploaded:', updateData.image);
+      
+      // Delete old image if needed
+      const oldRecipe = await Recipe.findById(req.params.id);
+      if (oldRecipe && oldRecipe.image) {
+        const oldImagePath = path.join(__dirname, '../../', oldRecipe.image);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+          console.log('Old image deleted:', oldImagePath);
+        }
+      }
+    }
+    
+    // Parse arrays if they come as strings
+    if (typeof updateData.ingredients === 'string') {
+      try {
+        updateData.ingredients = JSON.parse(updateData.ingredients);
+      } catch (e) {
+        updateData.ingredients = updateData.ingredients.split(',').map(i => i.trim()).filter(Boolean);
+      }
+    }
+    
+    if (typeof updateData.steps === 'string') {
+      try {
+        updateData.steps = JSON.parse(updateData.steps);
+      } catch (e) {
+        updateData.steps = updateData.steps.split(',').map(s => s.trim()).filter(Boolean);
+      }
+    }
+    
+    if (typeof updateData.tags === 'string') {
+      try {
+        updateData.tags = JSON.parse(updateData.tags);
+      } catch (e) {
+        updateData.tags = updateData.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+    
+    // Also update instructions if steps changed
+    if (updateData.steps) {
+      updateData.instructions = updateData.steps;
+    }
+    
     const recipe = await Recipe.findOneAndUpdate(
       { _id: req.params.id, createdBy: req.user.id },
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
     
@@ -148,8 +254,12 @@ async function updateRecipe(req, res, next) {
       return res.status(404).json({ message: 'Recipe not found or not owned by user' });
     }
     
+    console.log('Recipe updated successfully with image:', recipe.image);
+    console.log('========================');
+    
     res.json(recipe);
   } catch (error) {
+    console.error('Update recipe error:', error);
     next(error);
   }
 }

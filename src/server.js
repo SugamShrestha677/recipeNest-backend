@@ -10,13 +10,35 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
 const commentRoutes = require('./routes/commentRoutes');
-// const path = require('path');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.SERVER_PORT || 5000;
 
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+// Configure CORS with more permissive settings for static files
+const corsOptions = {
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+// Apply CORS middleware FIRST
+app.use(cors(corsOptions));
+
+// Serve static files BEFORE other middleware
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  setHeaders: (res, path) => {
+    // Add CORS headers to static files
+    res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+}));
+
+// Security middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource sharing
+}));
+
 // IMPORTANT: Body parser middleware - MUST be added with app.use()
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

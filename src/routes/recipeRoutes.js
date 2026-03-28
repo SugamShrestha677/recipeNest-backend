@@ -1,4 +1,6 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
 const {
   createRecipe,
   getRecipes,
@@ -13,18 +15,14 @@ const {
   getTrendingRecipes  
 } = require('../controllers/recipeController');
 const authMiddleware = require('../middleware/auth');
-
+const upload = require('../middleware/upload');
 const router = express.Router();
 
-// Public routes (no authentication required)
+// ==================== PUBLIC ROUTES ====================
 router.get('/', getRecipes);
-
-// GET /api/recipes/search - Search recipes (must come before /:id)
 router.get('/search', searchRecipes);
-
-// GET /api/recipes/trending - Get trending recipes
 router.get('/trending', getTrendingRecipes);
-
+router.get('/:id', getRecipeById);  // Moved this up but after specific routes
 router.post('/:id/view', async (req, res, next) => {
   try {
     const Recipe = require('../models/Recipe');
@@ -35,17 +33,18 @@ router.post('/:id/view', async (req, res, next) => {
   }
 });
 
+// Serve static files from uploads directory
+router.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+
+// ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);
 
-router.route('/').post(createRecipe).get(getRecipes);
+router.post('/', upload.single('image'), createRecipe);
 router.get('/my/recipes', getMyRecipes);
 router.get('/saved', getSavedRecipes);
-router
-.route('/:id')
-.put(updateRecipe)
-.delete(deleteRecipe);
-
+router.put('/:id', upload.single('image'), updateRecipe);
+router.delete('/:id', deleteRecipe);
 router.post('/:id/like', likeRecipe);
 router.post('/:id/save', saveRecipe);
-router.get('/:id', getRecipeById);
+
 module.exports = router;
