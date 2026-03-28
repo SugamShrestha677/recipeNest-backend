@@ -176,38 +176,67 @@ async function deleteRecipe(req, res, next) {
 
 async function likeRecipe(req, res, next) {
   try {
+    console.log('Like request received for recipe:', req.params.id);
+    console.log('User ID:', req.user.id);
+    
+    const Recipe = require('../models/Recipe');
+    const Notification = require('../models/notification');
+    
     const recipe = await Recipe.findById(req.params.id);
     if (!recipe) {
+      console.log('Recipe not found');
       return res.status(404).json({ message: 'Recipe not found' });
     }
     
+    // Initialize likes array if it doesn't exist
+    if (!recipe.likes) {
+      recipe.likes = [];
+    }
+    
     const userLiked = recipe.likes.includes(req.user.id);
+    console.log('User already liked:', userLiked);
     
     if (userLiked) {
       // Unlike
       recipe.likes = recipe.likes.filter(id => id.toString() !== req.user.id);
       await recipe.save();
+      console.log('Recipe unliked successfully');
       
-      res.json({ liked: false, likesCount: recipe.likes.length });
+      res.json({ 
+        liked: false, 
+        likesCount: recipe.likes.length,
+        message: 'Recipe unliked successfully'
+      });
     } else {
       // Like
       recipe.likes.push(req.user.id);
       await recipe.save();
+      console.log('Recipe liked successfully');
       
       // Create notification for recipe owner
       if (recipe.createdBy.toString() !== req.user.id) {
-        await Notification.create({
-          user: recipe.createdBy,
-          type: 'like',
-          title: 'Someone liked your recipe!',
-          message: `${req.user.name} liked your recipe "${recipe.title}"`,
-          data: { recipeId: recipe._id, userId: req.user.id }
-        });
+        try {
+          await Notification.create({
+            user: recipe.createdBy,
+            type: 'like',
+            title: 'Someone liked your recipe!',
+            message: `${req.user.name} liked your recipe "${recipe.title}"`,
+            data: { recipeId: recipe._id, userId: req.user.id }
+          });
+          console.log('Notification created');
+        } catch (err) {
+          console.log('Notification creation failed:', err.message);
+        }
       }
       
-      res.json({ liked: true, likesCount: recipe.likes.length });
+      res.json({ 
+        liked: true, 
+        likesCount: recipe.likes.length,
+        message: 'Recipe liked successfully'
+      });
     }
   } catch (error) {
+    console.error('Like recipe error:', error);
     next(error);
   }
 }
@@ -274,6 +303,83 @@ async function getMyRecipes(req, res, next) {
   }
 }
 
+// Save/Unsave recipe (bookmark)
+async function saveRecipe(req, res, next) {
+  try {
+    console.log('Save request received for recipe:', req.params.id);
+    console.log('User ID:', req.user.id);
+    
+    const Recipe = require('../models/Recipe');
+    
+    const recipe = await Recipe.findById(req.params.id);
+    if (!recipe) {
+      console.log('Recipe not found');
+      return res.status(404).json({ message: 'Recipe not found' });
+    }
+    
+    // Initialize saves array if it doesn't exist
+    if (!recipe.saves) {
+      recipe.saves = [];
+    }
+    
+    const userSaved = recipe.saves.includes(req.user.id);
+    console.log('User already saved:', userSaved);
+    
+    if (userSaved) {
+      // Unsave
+      recipe.saves = recipe.saves.filter(id => id.toString() !== req.user.id);
+      await recipe.save();
+      console.log('Recipe unsaved successfully');
+      
+      res.json({ 
+        saved: false, 
+        savesCount: recipe.saves.length,
+        message: 'Recipe removed from saved collection'
+      });
+    } else {
+      // Save
+      recipe.saves.push(req.user.id);
+      await recipe.save();
+      console.log('Recipe saved successfully');
+      
+      res.json({ 
+        saved: true, 
+        savesCount: recipe.saves.length,
+        message: 'Recipe saved successfully'
+      });
+    }
+  } catch (error) {
+    console.error('Save recipe error:', error);
+    next(error);
+  }
+}
+
+// Get saved recipes for current user
+async function getSavedRecipes(req, res, next) {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 5), 50);
+    
+    // Find recipes where saves array contains current user's ID
+    const total = await Recipe.countDocuments({ saves: req.user.id, published: true });
+    const recipes = await Recipe.find({ saves: req.user.id, published: true })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate('createdBy', 'name profilePicture')
+      .lean();
+    
+    res.json({
+      page,
+      limit,
+      total,
+      recipes,
+      hasMore: page * limit < total
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 module.exports = {
   createRecipe,
   getRecipes,
@@ -282,5 +388,7 @@ module.exports = {
   deleteRecipe,
   likeRecipe,
   addComment,
-  getMyRecipes
+  getMyRecipes,
+  saveRecipe,
+  getSavedRecipes
 };

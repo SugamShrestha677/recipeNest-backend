@@ -4,19 +4,39 @@ const {
   getRecipes,
   getRecipeById,
   updateRecipe,
-  deleteRecipe
+  deleteRecipe,
+  likeRecipe,
+  getMyRecipes,
+  saveRecipe,
+  getSavedRecipes
 } = require('../controllers/recipeController');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Public routes (no authentication required)
+router.get('/', getRecipes);
+router.post('/:id/view', async (req, res, next) => {
+  try {
+    const Recipe = require('../models/Recipe');
+    await Recipe.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.use(authMiddleware);
 
 router.route('/').post(createRecipe).get(getRecipes);
+router.get('/my/recipes', getMyRecipes);
+router.get('/saved', getSavedRecipes);
 router
-  .route('/:id')
-  .get(getRecipeById)
-  .put(updateRecipe)
-  .delete(deleteRecipe);
+.route('/:id')
+.put(updateRecipe)
+.delete(deleteRecipe);
 
+router.post('/:id/like', likeRecipe);
+router.post('/:id/save', saveRecipe);
+router.get('/:id', getRecipeById);
 module.exports = router;
