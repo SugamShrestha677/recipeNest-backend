@@ -19,10 +19,10 @@ const upload = require('../middleware/upload');
 const router = express.Router();
 
 // ==================== PUBLIC ROUTES ====================
+// Specific routes first
 router.get('/', getRecipes);
 router.get('/search', searchRecipes);
 router.get('/trending', getTrendingRecipes);
-router.get('/:id', getRecipeById);  // Moved this up but after specific routes
 router.post('/:id/view', async (req, res, next) => {
   try {
     const Recipe = require('../models/Recipe');
@@ -39,12 +39,19 @@ router.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 // ==================== PROTECTED ROUTES ====================
 router.use(authMiddleware);
 
+// Protected specific routes (no :id parameter)
 router.post('/', upload.single('image'), createRecipe);
 router.get('/my/recipes', getMyRecipes);
 router.get('/saved', getSavedRecipes);
+
+// Protected routes with :id parameter
 router.put('/:id', upload.single('image'), updateRecipe);
 router.delete('/:id', deleteRecipe);
 router.post('/:id/like', likeRecipe);
 router.post('/:id/save', saveRecipe);
+
+// ==================== PUBLIC PARAMETER ROUTE (MUST BE LAST!) ====================
+// This catches any GET request with an ID that wasn't matched above
+router.get('/:id', getRecipeById);
 
 module.exports = router;

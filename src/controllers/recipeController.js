@@ -148,7 +148,7 @@ async function getRecipes(req, res, next) {
       .sort({ [sortBy]: sortOrder })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate('createdBy', 'name profilePicture')
+      .populate('createdBy', 'name profilePicture bio specialty experience location followers')
       .lean();
 
     res.json({

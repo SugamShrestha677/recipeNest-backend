@@ -104,7 +104,7 @@ async function getMe(req, res, next) {
 
 async function updateProfile(req, res, next) {
   try {
-    const { name, bio, specialty, experience, location, website, phone, profilePicture } = req.body;
+    const { name, bio, specialty, experience, location, website, phone } = req.body;
     
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -118,7 +118,11 @@ async function updateProfile(req, res, next) {
     if (location !== undefined) user.location = location;
     if (website !== undefined) user.website = website;
     if (phone !== undefined) user.phone = phone;
-    if (profilePicture !== undefined) user.profilePicture = profilePicture;
+    
+    // Handle profile picture upload
+    if (req.file) {
+      user.profilePicture = `/uploads/${req.file.filename}`;
+    }
     
     await user.save();
     
