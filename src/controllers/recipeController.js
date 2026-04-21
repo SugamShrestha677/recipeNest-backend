@@ -413,6 +413,42 @@ async function addComment(req, res, next) {
   }
 }
 
+async function likeComment(req, res, next) {
+  try {
+    const comment = await Comment.findById(req.params.id);
+
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    if (!Array.isArray(comment.likes)) {
+      comment.likes = [];
+    }
+
+    const alreadyLiked = comment.likes.some(
+      (likedUserId) => String(likedUserId) === String(req.user.id)
+    );
+
+    if (alreadyLiked) {
+      comment.likes = comment.likes.filter(
+        (likedUserId) => String(likedUserId) !== String(req.user.id)
+      );
+    } else {
+      comment.likes.push(req.user.id);
+    }
+
+    await comment.save();
+
+    res.json({
+      liked: !alreadyLiked,
+      likes: comment.likes,
+      likesCount: comment.likes.length
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getMyRecipes(req, res, next) {
   try {
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -586,6 +622,7 @@ module.exports = {
   deleteRecipe,
   likeRecipe,
   addComment,
+  likeComment,
   getMyRecipes,
   saveRecipe,
   getSavedRecipes,
