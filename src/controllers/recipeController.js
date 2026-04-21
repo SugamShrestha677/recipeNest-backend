@@ -4,11 +4,27 @@ const Comment = require('../models/comment');
 const Notification = require('../models/notification');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+function getRequesterUserId(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.id || null;
+  } catch (error) {
+    return null;
+  }
 }
 
 async function createRecipe(req, res, next) {
@@ -172,9 +188,17 @@ async function getRecipeById(req, res, next) {
     if (!recipe) {
       return res.status(404).json({ message: 'Recipe not found' });
     }
-    
-    // Increment view count (async, don't wait)
-    Recipe.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).exec();
+
+    const requesterUserId = getRequesterUserId(req);
+    const ownerId =
+      typeof recipe.createdBy === 'object'
+        ? recipe.createdBy?._id || recipe.createdBy?.id
+        : recipe.createdBy;
+
+    // Increment views only when the viewer is not the recipe owner.
+    if (!requesterUserId || String(ownerId) !== String(requesterUserId)) {
+      Recipe.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).exec();
+    }
     
     // Get comments
     const comments = await Comment.find({ recipe: req.params.id })
