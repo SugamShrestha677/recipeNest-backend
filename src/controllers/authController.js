@@ -8,6 +8,24 @@ function generateToken(userId) {
   });
 }
 
+function buildAuthUser(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isActive: user.isActive,
+    fullName: user.name,
+    bio: user.bio || '',
+    specialty: user.specialty || '',
+    experience: user.experience || 0,
+    location: user.location || '',
+    profilePicture: user.profilePicture || '',
+    website: user.website || '',
+    phone: user.phone || ''
+  };
+}
+
 async function register(req, res, next) {
   try {
     const { name, email, password } = req.body;
@@ -31,16 +49,11 @@ async function register(req, res, next) {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password });
+    const user = await User.create({ name, email, password, role: 'chef' });
     const token = generateToken(user._id);
 
     res.status(201).json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        fullName: user.name  // Add this for consistency
-      },
+      user: buildAuthUser(user),
       token
     });
   } catch (error) {
@@ -59,15 +72,13 @@ async function login(req, res, next) {
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Contact an administrator.' });
+    }
 
     const token = generateToken(user._id);
     res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        fullName: user.name  // Add this for consistency
-      },
+      user: buildAuthUser(user),
       token
     });
   } catch (error) {
@@ -83,20 +94,8 @@ async function getMe(req, res, next) {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        fullName: user.name,
-        bio: user.bio || '',
-        specialty: user.specialty || '',
-        experience: user.experience || 0,
-        location: user.location || '',
-        profilePicture: user.profilePicture || ''
-      }
-    });
+
+    res.json({ user: buildAuthUser(user) });
   } catch (error) {
     next(error);
   }
@@ -126,21 +125,7 @@ async function updateProfile(req, res, next) {
     
     await user.save();
     
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        fullName: user.name,
-        bio: user.bio,
-        specialty: user.specialty,
-        experience: user.experience,
-        location: user.location,
-        profilePicture: user.profilePicture,
-        website: user.website,
-        phone: user.phone
-      }
-    });
+    res.json({ user: buildAuthUser(user) });
   } catch (error) {
     next(error);
   }

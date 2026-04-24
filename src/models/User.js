@@ -28,6 +28,15 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false
     },
+    role: {
+      type: String,
+      enum: ['chef', 'admin'],
+      default: 'chef'
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
 
     // New fields for chef profile
     bio: {

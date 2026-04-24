@@ -10,6 +10,8 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/authRoutes');
 const recipeRoutes = require('./routes/recipeRoutes');
 const commentRoutes = require('./routes/commentRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const ensureAdminUser = require('./utils/ensureAdminUser');
 const path = require('path');
 
 const app = express();
@@ -48,6 +50,7 @@ app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) }
 app.use('/api/auth', authRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api', commentRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -62,6 +65,7 @@ app.use(errorHandler);
 async function startServer() {
   try {
     await connectDB(process.env.MONGODB_URI);
+    await ensureAdminUser();
     const serverInstance = app.listen(PORT, () => {
       logger.info(`Server listening on port ${PORT}`);
       logger.info(`Health check: http://localhost:${PORT}/api/health`);
