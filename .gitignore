@@ -1,5 +1,2 @@
 node_modules/
 .env
-docker-compose.yml
-Dockerfile
-jest.setup.js
