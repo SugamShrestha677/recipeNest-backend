@@ -15,7 +15,7 @@ const ensureAdminUser = require('./utils/ensureAdminUser');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.SERVER_PORT || 5000;
+const PORT = process.env.PORT || process.env.SERVER_PORT || 5000;
 
 // Configure CORS with more permissive settings for static files
 const corsOptions = {
